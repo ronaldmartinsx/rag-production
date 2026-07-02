@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# Segredos / configuração local
+.env
+.env.*
+!.env.example
+
+# Dados locais do Qdrant (quando montado no host)
+qdrant_storage/
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store

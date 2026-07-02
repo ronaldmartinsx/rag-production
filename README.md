@@ -78,20 +78,21 @@ As chamadas da Rota `/chat/ask` instanciam um `CallbackHandler()` do [Langfuse](
 ### Pré-requisitos
 1.  **[Docker](https://docs.docker.com/)**: Necessário para rodar o [Qdrant](https://qdrant.tech/documentation/) local.
 2.  **[uv](https://docs.astral.sh/uv/)** (ou pip): Gerenciador de dependências python moderno.
-3.  **Ambiente configurado**: Crie um arquivo `.env` na raiz da pasta `09-rag-production` baseado nas chaves pedidas. (OpenAI API e [Langfuse](https://langfuse.com/docs))
+3.  **Ambiente configurado**: Copie `.env.example` para `.env` e preencha as chaves. (OpenAI API e, opcionalmente, [Langfuse](https://langfuse.com/docs))
+    ```bash
+    cp .env.example .env
+    ```
 
 ### Passos:
 
 1.  **Subir o Qdrant pelo Docker:**
     ```bash
-    docker run -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage:z qdrant/qdrant
+    docker compose up -d
     ```
 
-2.  **Instalar e ativar ambiente virtual (se usando UV):**
+2.  **Instalar dependências (UV):**
     ```bash
-    uv venv
-    uv pip sync requirements.txt
-    uv pip install pymupdf  # Garantir compatibilidade do processador PDF
+    uv sync
     ```
 
 3.  **Rodar a aplicação [FastAPI](https://fastapi.tiangolo.com/):**
