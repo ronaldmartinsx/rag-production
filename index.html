@@ -4,16 +4,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Qdrant RAG Chat</title>
+    <title>Converse com seus documentos</title>
     <style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
-            --bg-color: #f8fafc;
+            --primary-soft: #eff6ff;
+            --bg-color: #f1f5f9;
             --panel-bg: #ffffff;
             --text-main: #0f172a;
             --text-muted: #64748b;
             --border: #e2e8f0;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -22,18 +31,80 @@
             color: var(--text-main);
             margin: 0;
             padding: 20px;
+            min-height: 100vh;
             display: flex;
-            gap: 20px;
-            height: 100vh;
-            box-sizing: border-box;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* ---- Cabeçalho ---- */
+        .app-header {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 24px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+        }
+
+        .app-header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .app-header p {
+            margin: 6px 0 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--primary-soft);
+            color: var(--primary-hover);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        .step .num {
+            background: var(--primary);
+            color: #fff;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        /* ---- Layout de painéis ---- */
+        .layout {
+            display: flex;
+            gap: 18px;
+            flex: 1;
+            min-height: 0;
         }
 
         .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -48,15 +119,21 @@
 
         .chat-panel {
             flex: 2;
+            min-width: 320px;
         }
 
         h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 1.25rem;
-            color: var(--text-main);
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 10px;
+            margin: 0 0 4px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 16px;
         }
 
         .form-group {
@@ -67,8 +144,14 @@
             display: block;
             margin-bottom: 6px;
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-main);
+        }
+
+        .hint {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 5px;
         }
 
         input[type="text"],
@@ -76,68 +159,123 @@
         select,
         input[type="file"] {
             width: 100%;
-            padding: 8px 12px;
+            padding: 10px 12px;
             border: 1px solid var(--border);
-            border-radius: 6px;
-            box-sizing: border-box;
+            border-radius: 8px;
             font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
         }
 
         button {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
+            padding: 11px 16px;
+            border-radius: 8px;
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.9rem;
             width: 100%;
             transition: background-color 0.2s;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             background-color: var(--primary-hover);
         }
 
         button:disabled {
-            background-color: var(--border);
+            background-color: #cbd5e1;
             cursor: not-allowed;
-            color: var(--text-muted);
         }
 
+        /* ---- Opções avançadas ---- */
+        details.advanced {
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin-bottom: 16px;
+            background: #fafbfc;
+        }
+
+        details.advanced summary {
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 6px 0;
+            user-select: none;
+        }
+
+        details.advanced[open] summary {
+            margin-bottom: 8px;
+        }
+
+        /* ---- Chat ---- */
         .chat-history {
             flex: 1;
             overflow-y: auto;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 16px;
-            margin-bottom: 16px;
-            background: #f1f5f9;
+            margin-bottom: 14px;
+            background: #f8fafc;
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
         .message {
-            max-width: 80%;
+            max-width: 82%;
             padding: 12px 16px;
-            border-radius: 8px;
-            line-height: 1.5;
+            border-radius: 12px;
+            line-height: 1.55;
             word-wrap: break-word;
+            font-size: 0.92rem;
         }
 
         .user-message {
             align-self: flex-end;
             background-color: var(--primary);
             color: white;
-            border-bottom-right-radius: 2px;
+            border-bottom-right-radius: 3px;
         }
 
         .bot-message {
             align-self: flex-start;
             background-color: white;
             border: 1px solid var(--border);
-            border-bottom-left-radius: 2px;
+            border-bottom-left-radius: 3px;
+        }
+
+        .typing {
+            align-self: flex-start;
+            display: flex;
+            gap: 4px;
+            padding: 14px 16px;
+        }
+
+        .typing span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: blink 1.2s infinite both;
+        }
+
+        .typing span:nth-child(2) { animation-delay: 0.2s; }
+        .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0.2; }
+            40% { opacity: 1; }
         }
 
         .chat-input-area {
@@ -151,131 +289,280 @@
 
         .chat-input-area button {
             width: auto;
+            padding-left: 22px;
+            padding-right: 22px;
+        }
+
+        .base-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 14px;
+            background: var(--primary-soft);
+            padding: 10px 14px;
+            border-radius: 10px;
+        }
+
+        .base-selector label {
+            margin: 0;
+            white-space: nowrap;
+            color: var(--primary-hover);
+        }
+
+        .base-selector select {
+            flex: 1;
+        }
+
+        .btn-ghost {
+            width: auto;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .btn-ghost:hover:not(:disabled) {
+            background: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        .btn-icon {
+            width: auto;
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon:hover:not(:disabled) {
+            background: #fff;
         }
 
         .status-msg {
-            font-size: 0.875rem;
-            margin-top: 8px;
-            padding: 8px;
-            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
             display: none;
         }
 
         .success {
-            background: #dcfce7;
-            color: #166534;
+            background: var(--success-bg);
+            color: var(--success-text);
             display: block;
         }
 
         .error {
-            background: #fee2e2;
-            color: #991b1b;
+            background: var(--error-bg);
+            color: var(--error-text);
             display: block;
         }
 
         hr {
             border: 0;
             border-top: 1px solid var(--border);
-            margin: 24px 0;
+            margin: 22px 0;
+        }
+
+        /* ---- Responsivo ---- */
+        @media (max-width: 860px) {
+            .layout {
+                flex-direction: column;
+            }
+            .config-panel {
+                max-width: none;
+            }
+            .chat-panel {
+                min-height: 60vh;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Panel 1: Configuration & Upload -->
-    <div class="panel config-panel">
-        <h2>Coleções Qdrant</h2>
-
-        <div class="form-group">
-            <label for="newCollectionName">Criar Coleção</label>
-            <div style="display: flex; gap: 8px;">
-                <input type="text" id="newCollectionName" placeholder="ex: base_teste">
-                <button onclick="createCollection()" style="width: auto;">Criar</button>
-            </div>
-            <div id="colStatus" class="status-msg"></div>
+    <!-- Cabeçalho -->
+    <header class="app-header">
+        <h1>💬 Converse com seus documentos</h1>
+        <p>Envie seus arquivos e faça perguntas em linguagem natural — as respostas vêm do conteúdo que você adicionou.</p>
+        <div class="steps">
+            <div class="step"><span class="num">1</span> Crie uma base de conhecimento</div>
+            <div class="step"><span class="num">2</span> Adicione seus documentos</div>
+            <div class="step"><span class="num">3</span> Faça suas perguntas</div>
         </div>
+    </header>
 
-        <hr>
+    <div class="layout">
 
-        <h2>Ingestão de Arquivo</h2>
-        <form id="uploadForm" onsubmit="uploadDocument(event)">
+        <!-- Painel 1: Bases e documentos -->
+        <div class="panel config-panel">
+            <h2>📚 Suas bases de conhecimento</h2>
+            <p class="section-desc">Uma base é um "assunto" onde seus documentos ficam guardados (ex.: <em>Contratos</em>, <em>Leis</em>).</p>
+
             <div class="form-group">
-                <label for="uploadCollection">Coleção de Destino</label>
-                <input type="text" id="uploadCollection" required placeholder="Nome da coleção existente">
-            </div>
-
-            <div class="form-group">
-                <label for="fileInput">Arquivo (PDF/TXT)</label>
-                <input type="file" id="fileInput" required accept=".pdf,.txt">
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label for="chunkSize">Chunk Size</label>
-                    <input type="number" id="chunkSize" value="1000" min="100">
+                <label for="newCollectionName">Criar uma nova base</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="newCollectionName" placeholder="ex: contratos_2026">
+                    <button onclick="createCollection()" style="width: auto;">Criar</button>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label for="overlap">Overlap</label>
-                    <input type="number" id="overlap" value="100" min="0">
+                <div class="hint">Use um nome curto, sem espaços ou acentos.</div>
+                <div id="colStatus" class="status-msg"></div>
+            </div>
+
+            <hr>
+
+            <h2>📄 Adicionar documento</h2>
+            <p class="section-desc">Envie um PDF ou TXT para uma base. O conteúdo fica pesquisável no chat.</p>
+            <form id="uploadForm" onsubmit="uploadDocument(event)">
+                <div class="form-group">
+                    <label for="uploadCollection">Em qual base salvar</label>
+                    <select id="uploadCollection" required></select>
+                    <div class="hint">Não vê sua base? Crie uma acima primeiro.</div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="splitterType">Splitter Type</label>
-                <select id="splitterType">
-                    <option value="recursive">Recursive Character</option>
-                    <option value="character">Character</option>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="fileInput">Escolha o arquivo (PDF ou TXT)</label>
+                    <input type="file" id="fileInput" required accept=".pdf,.txt">
+                    <div class="hint">Dica: PDFs com texto funcionam melhor que imagens escaneadas.</div>
+                </div>
 
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
-                    <input type="checkbox" id="useTiktoken" style="width:auto;"> Usar Tiktoken
-                </label>
-            </div>
+                <details class="advanced">
+                    <summary>⚙️ Opções avançadas (opcional)</summary>
+                    <p class="hint" style="margin-top:0;">Só mexa aqui se souber o que faz. Os valores padrão funcionam bem.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="chunkSize">Tamanho do trecho</label>
+                            <input type="number" id="chunkSize" value="1000" min="100">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="overlap">Sobreposição</label>
+                            <input type="number" id="overlap" value="100" min="0">
+                        </div>
+                    </div>
 
-            <button type="submit" id="btnUpload">Processar e Ingerir</button>
-            <div id="uploadStatus" class="status-msg"></div>
-        </form>
-    </div>
+                    <div class="form-group">
+                        <label for="splitterType">Modo de divisão do texto</label>
+                        <select id="splitterType">
+                            <option value="recursive">Inteligente (recomendado)</option>
+                            <option value="character">Simples (por caractere)</option>
+                        </select>
+                    </div>
 
-    <!-- Panel 2: Chat -->
-    <div class="panel chat-panel">
-        <h2>Chat RAG</h2>
+                    <div class="form-group" style="margin-bottom:4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                            <input type="checkbox" id="useTiktoken" style="width:auto;"> Contar por tokens (Tiktoken)
+                        </label>
+                    </div>
+                </details>
 
-        <div class="form-group" style="display: flex; gap: 10px; align-items: center;">
-            <label for="chatCollection" style="margin: 0; white-space: nowrap;">Consultar Coleção:</label>
-            <input type="text" id="chatCollection" value="Fiscap_Edital_v1" style="width: 200px;">
+                <button type="submit" id="btnUpload">Enviar documento</button>
+                <div id="uploadStatus" class="status-msg"></div>
+            </form>
         </div>
 
-        <div class="chat-history" id="chatHistory">
-            <div class="message bot-message">Olá! Qual a sua dúvida sobre os documentos da sua base?</div>
-        </div>
+        <!-- Painel 2: Chat -->
+        <div class="panel chat-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>💬 Perguntas e respostas</h2>
+                <button type="button" onclick="clearConversation()" class="btn-ghost">🧹 Limpar conversa</button>
+            </div>
 
-        <form class="chat-input-area" onsubmit="sendMessage(event)">
-            <input type="text" id="chatInput" placeholder="Digite sua pergunta..." autocomplete="off" required>
-            <button type="submit" id="btnSend">Enviar</button>
-        </form>
+            <div class="base-selector">
+                <label for="chatCollection">Buscar na base:</label>
+                <select id="chatCollection"></select>
+                <button type="button" onclick="loadBases()" class="btn-icon" title="Atualizar lista de bases">🔄</button>
+            </div>
+
+            <div class="chat-history" id="chatHistory">
+                <div class="message bot-message">Olá! 👋 Escolha uma base acima e me faça uma pergunta sobre os seus documentos.</div>
+            </div>
+
+            <form class="chat-input-area" onsubmit="sendMessage(event)">
+                <input type="text" id="chatInput" placeholder="Digite sua pergunta..." autocomplete="off" required>
+                <button type="submit" id="btnSend">Enviar</button>
+            </form>
+        </div>
     </div>
 
     <script>
         const API_BASE = 'http://localhost:8000';
+        const LAST_BASE_KEY = 'rag_last_base';
 
         // Historico em memoria
         let chatContext = [];
 
-        // --- Qdrant Colecoes ---
+        // Ao carregar, busca as bases existentes
+        window.addEventListener('DOMContentLoaded', loadBases);
+
+        function rememberBase(name) {
+            if (!name) return;
+            localStorage.setItem(LAST_BASE_KEY, name);
+        }
+
+        // Carrega a lista de bases e popula os menus suspensos
+        async function loadBases() {
+            const preferred = localStorage.getItem(LAST_BASE_KEY);
+            try {
+                const res = await fetch(`${API_BASE}/qdrant/collections`);
+                const data = await res.json();
+                const bases = data.collections || [];
+                populateSelect(document.getElementById('uploadCollection'), bases, preferred);
+                populateSelect(document.getElementById('chatCollection'), bases, preferred);
+            } catch (err) {
+                // Sem conexão: deixa os menus vazios; o aviso aparece ao usar.
+            }
+        }
+
+        function populateSelect(sel, bases, preferred) {
+            const current = sel.value;
+            sel.innerHTML = '';
+            if (!bases.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Nenhuma base ainda — crie uma';
+                opt.disabled = true;
+                opt.selected = true;
+                sel.appendChild(opt);
+                return;
+            }
+            bases.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                sel.appendChild(opt);
+            });
+            // Mantém a seleção atual, senão usa a última usada, senão a primeira.
+            if (current && bases.includes(current)) sel.value = current;
+            else if (preferred && bases.includes(preferred)) sel.value = preferred;
+        }
+
+        // Limpa a conversa atual
+        function clearConversation() {
+            chatContext = [];
+            document.getElementById('chatHistory').innerHTML =
+                '<div class="message bot-message">Conversa limpa. 🧹 Pode fazer uma nova pergunta.</div>';
+        }
+
+        // Escapa HTML e converte quebras de linha
+        function formatText(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
+        }
+
+        // --- Criar base de conhecimento ---
         async function createCollection() {
             const name = document.getElementById('newCollectionName').value.trim();
             const statusDiv = document.getElementById('colStatus');
 
-            if (!name) return;
+            if (!name) {
+                statusDiv.className = 'status-msg error';
+                statusDiv.textContent = 'Digite um nome para a base.';
+                return;
+            }
 
             try {
-                // Notando que o router de collections atual da aplicacao do usuario tem o prefixo /collections ou /qdrant/collection
-                // Seguindo file qdrant.py = router.post("/collection") -> prefixo "/qdrant" = "/qdrant/collection"
-                // Pelo teste recente do usuario estava "POST /qdrant/collection?collection_name=teste"
                 const res = await fetch(`${API_BASE}/qdrant/collection?collection_name=${encodeURIComponent(name)}`, {
                     method: 'POST'
                 });
@@ -283,20 +570,23 @@
 
                 if (res.ok) {
                     statusDiv.className = 'status-msg success';
-                    statusDiv.innerHTML = data.message || `Coleção ${name} criada com sucesso.`;
+                    statusDiv.textContent = `✓ Base "${name}" pronta para uso!`;
+                    rememberBase(name);
+                    await loadBases();
                     document.getElementById('uploadCollection').value = name;
                     document.getElementById('chatCollection').value = name;
+                    document.getElementById('newCollectionName').value = '';
                 } else {
                     statusDiv.className = 'status-msg error';
-                    statusDiv.innerHTML = data.detail || 'Erro ao criar coleção.';
+                    statusDiv.textContent = data.detail || 'Não foi possível criar a base.';
                 }
             } catch (err) {
                 statusDiv.className = 'status-msg error';
-                statusDiv.innerHTML = 'Erro de conexão.';
+                statusDiv.textContent = 'Erro de conexão. A aplicação está rodando?';
             }
         }
 
-        // --- Qdrant Ingestao ---
+        // --- Adicionar documento ---
         async function uploadDocument(e) {
             e.preventDefault();
 
@@ -309,21 +599,30 @@
             const statusDiv = document.getElementById('uploadStatus');
             const btn = document.getElementById('btnUpload');
 
-            if (!colName || !fileInput) return;
+            if (!colName) {
+                statusDiv.className = 'status-msg error';
+                statusDiv.textContent = 'Informe em qual base salvar o documento.';
+                return;
+            }
+            if (!fileInput) {
+                statusDiv.className = 'status-msg error';
+                statusDiv.textContent = 'Escolha um arquivo primeiro.';
+                return;
+            }
 
             btn.disabled = true;
-            btn.innerHTML = 'Processando (LLM + Embeddings)...';
+            btn.textContent = 'Processando seu documento...';
             statusDiv.className = 'status-msg';
+            statusDiv.style.display = 'none';
 
             const formData = new FormData();
-            formData.append("file", fileInput);
+            formData.append("files", fileInput);
             formData.append("chunk_size", chunkSize);
             formData.append("overlap_chunk", overlap);
             formData.append("splitter_type", splitter);
             formData.append("use_tiktoken", tiktoken);
 
             try {
-                // Utilizando router /qdrant/collection/{collection_name}/document
                 const res = await fetch(`${API_BASE}/qdrant/collection/${encodeURIComponent(colName)}/document`, {
                     method: 'POST',
                     body: formData
@@ -332,34 +631,62 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    statusDiv.className = 'status-msg success';
-                    statusDiv.innerHTML = `Vetorizado! ${data.vector_count} chunks processados.`;
+                    const results = data.results || [];
+                    const totalChunks = results.reduce((sum, r) => sum + (r.vector_count || 0), 0);
+                    const errors = results.filter(r => r.status === 'error');
+                    const skipped = results.filter(r => r.status === 'skipped');
+                    if (errors.length) {
+                        statusDiv.className = 'status-msg error';
+                        statusDiv.textContent = `Algo deu errado: ${errors.map(r => r.message).join('; ')}`;
+                    } else if (skipped.length && !totalChunks) {
+                        statusDiv.className = 'status-msg error';
+                        statusDiv.textContent = `Não foi possível ler o documento: ${skipped.map(r => r.message).join('; ')}`;
+                    } else {
+                        statusDiv.className = 'status-msg success';
+                        statusDiv.textContent = `✓ Pronto! Seu documento foi adicionado à base "${colName}". Já pode fazer perguntas.`;
+                        rememberBase(colName);
+                        document.getElementById('chatCollection').value = colName;
+                        document.getElementById('fileInput').value = '';
+                    }
                 } else {
                     statusDiv.className = 'status-msg error';
-                    statusDiv.innerHTML = data.detail || 'Erro na ingestão.';
+                    statusDiv.textContent = data.detail || 'Não foi possível enviar o documento.';
                 }
             } catch (err) {
                 statusDiv.className = 'status-msg error';
-                statusDiv.innerHTML = 'Falha na requisição.';
+                statusDiv.textContent = 'Falha na conexão. A aplicação está rodando?';
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Processar e Ingerir';
+                btn.textContent = 'Enviar documento';
             }
         }
 
-        // --- Chat UI ---
+        // --- Chat: exibir mensagens ---
         function appendMessage(text, isUser) {
             const historyObj = document.getElementById('chatHistory');
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-
-            // Formatacao basica de markdown pra quebras de linha
-            msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+            msgDiv.innerHTML = formatText(text);
             historyObj.appendChild(msgDiv);
             historyObj.scrollTop = historyObj.scrollHeight;
         }
 
-        // --- Chat Requisicao ---
+        function showTyping() {
+            const historyObj = document.getElementById('chatHistory');
+            const t = document.createElement('div');
+            t.className = 'typing';
+            t.id = 'typingIndicator';
+            t.innerHTML = '<span></span><span></span><span></span>';
+            historyObj.appendChild(t);
+            historyObj.scrollTop = historyObj.scrollHeight;
+        }
+
+        function hideTyping() {
+            const t = document.getElementById('typingIndicator');
+            if (t) t.remove();
+        }
+
+        // --- Chat: enviar pergunta ---
         async function sendMessage(e) {
             e.preventDefault();
 
@@ -370,9 +697,16 @@
 
             if (!query) return;
 
+            if (!collectionName) {
+                appendMessage('Antes de perguntar, escolha uma base de conhecimento no campo "Buscar na base" acima. 🙂', false);
+                return;
+            }
+
+            rememberBase(collectionName);
             appendMessage(query, true);
             inputField.value = '';
             btn.disabled = true;
+            showTyping();
 
             const formData = new FormData();
             formData.append("query", query);
@@ -382,25 +716,25 @@
             }
 
             try {
-                // Endpoint /chat/ask espera FormData
                 const res = await fetch(`${API_BASE}/chat/ask`, {
                     method: 'POST',
                     body: formData
                 });
 
+                hideTyping();
+
                 if (res.ok) {
                     const data = await res.json();
                     appendMessage(data.response, false);
-
-                    // Adiciona no history basico
                     chatContext.push({ "role": "user", "content": query });
                     chatContext.push({ "role": "assistant", "content": data.response });
                 } else {
-                    const errInfo = await res.json();
-                    appendMessage(`[Erro do servidor: ${errInfo.detail || res.status}]`, false);
+                    const errInfo = await res.json().catch(() => ({}));
+                    appendMessage(`Ops, ocorreu um erro: ${errInfo.detail || res.status}`, false);
                 }
             } catch (err) {
-                appendMessage(`[Falha ao conectar com ${API_BASE}]`, false);
+                hideTyping();
+                appendMessage('Não consegui me conectar à aplicação. Verifique se ela está rodando.', false);
             } finally {
                 btn.disabled = false;
                 inputField.focus();
