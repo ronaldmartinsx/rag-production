@@ -11,6 +11,15 @@ router = APIRouter(prefix="/qdrant", tags=["Qdrant Management"])
 qdrant_service = QdrantService()
 doc_processor = DocumentProcessor()
 
+@router.get("/collections")
+async def list_collections():
+    """Returns the names of all existing collections."""
+    try:
+        return {"collections": await qdrant_service.list_collections()}
+    except Exception as e:
+        logger.error(f"Failed to list collections: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/collection")
 async def create_collection(collection_name: str):
     created = await qdrant_service.create_collection(collection_name)

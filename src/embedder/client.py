@@ -122,6 +122,11 @@ class QdrantService:
             )
         )
 
+    async def list_collections(self) -> List[str]:
+        """Lists the names of all existing collections."""
+        collections = await self.client.get_collections()
+        return sorted(c.name for c in collections.collections)
+
     async def collection_exists(self, collection_name: str) -> bool:
         return await self.client.collection_exists(collection_name)
 
