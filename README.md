@@ -21,32 +21,34 @@ O ecossistema que construímos envolve as seguintes tecnologias:
 *   **[Qdrant](https://qdrant.tech/documentation/)**: Nosso Banco de Dados Vetorial *Open Source*. Estamos rodando o [Qdrant](https://qdrant.tech/documentation/) via [Docker](https://docs.docker.com/) localmente (porta 6333) para persistir nossos embeddings de alta dimensão.
 *   **[LangChain](https://python.langchain.com/) & [LangGraph](https://langchain-ai.github.io/langgraph/)**: Orquestração do agente. O `LangGraph` gerencia o Estado da nossa conversa (StateGraph) e o ciclo dinâmico contínuo entre invocações diretas ao LLM e o *ToolNode* (nossa ferramenta de busca).
 *   **[OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings) (text-embedding-3-large)**: Criação de vetores para mapeamento semântico dos textos.
-*   **[OpenAI LLM](https://platform.openai.com/docs/models) (gpt-4o-mini)**: O "Cérebro" do Agente, encarregado de interpretar requests e executar chamadas da ferramenta de retrieve.
+*   **[OpenAI LLM](https://platform.openai.com/docs/models) (gpt-4.1-mini)**: O "Cérebro" do Agente, encarregado de interpretar requests e executar chamadas da ferramenta de retrieve. (Há também um `gpt-4.1` instanciado em `llm_models.py`.)
 *   **[Langfuse](https://langfuse.com/docs)**: Plataforma de Observabilidade e Monitoramento de LLMs. Usado através de callbacks para traçar e analisar cada token gerado e tempo de inferência nas requisições.
 
 ## 🗂️ Estrutura do Projeto
 
 ```text
-09-rag-production/
-├── index.html                  # Interface Web Frontend simples para testes (Chat + Upload).
+rag-production/
+├── index.html                  # Interface web (chat + upload de documentos).
 ├── main.py                     # Entrypoint do Uvicorn que sobe a aplicação FastAPI.
+├── docker-compose.yml          # Sobe o Qdrant localmente (portas 6333/6334).
+├── Makefile                    # Atalhos de desenvolvimento (`make dev`, `make down`, ...).
+├── .env.example                # Modelo das variáveis de ambiente.
 ├── src/
-│   ├── api.py                  # Definição do FastAPI, CORS e inclusão de Routers.
+│   ├── api.py                  # Definição do FastAPI, CORS, /health e inclusão dos Routers.
 │   ├── models.py               # Contratos de dados (Pydantic Models) para as Requisições/Respostas.
 │   ├── settings.py             # Gerenciamento de Variáveis de Ambiente e chaves de API.
 │   ├── pdf_utils.py            # Utilitários de extração de texto em memória (PyMuPDF - fitz).
 │   ├── customlogger.py         # Configuração de Logs padronizado para console.
 │   ├── chat/
 │   │   ├── chat.py             # Core do Agentic RAG: Graph State, Agente LLM, e a Tool de Retrieve.
-│   │   ├── llm_models.py       # Instanciação centralizada das LLMs e Embeddings conectados ao Langfuse.
-│   │   └── qdrant.py           # Conexão AsyncGlobal com o serviço Qdrant.
+│   │   ├── llm_models.py       # Instanciação centralizada das LLMs e Embeddings (OpenAI).
+│   │   └── qdrant.py           # Clientes global sync/async de conexão com o Qdrant.
 │   ├── embedder/
-│   │   ├── client.py           # Operações de Banco (Criar collection, Upsert Vetores).
+│   │   ├── client.py           # Operações de Banco (criar/listar collection, Upsert Vetores, etc.).
 │   │   └── processor.py        # Processamento Inteligente: Chunking Dinâmico, Extração Meta-Info + LLM.
 │   └── routers/
 │       ├── chat.py             # Endpoint /chat/ask -> Conecta o cliente Frontend ao agente.
-│       ├── embedder.py         # Endpoints de Upload, Processamento e Coleções.
-│       └── qdrant.py           # (Antigo/Legado) Rotas adicionais de administração CRUD do Qdrant.
+│       └── qdrant.py           # Router principal: coleções e documentos (criar, listar, upload, apagar).
 ```
 
 ## ⚙️ Novidades e Funcionalidades Core
@@ -70,7 +72,7 @@ O chat mudou radicalmente nesta versão. Usamos a magia do `StateGraph` do [Lang
 *   **O Agente pensa:** Se a requisição requerer, o agente ativa a *tool*, varre o banco, junta o resultado retornado pela Tool, formata com citações ("Fonte: arquivo X, pág Y") e molda a resposta final.
 
 ### 4. Observabilidade Real ([Langfuse](https://langfuse.com/docs))
-As chamadas da Rota `/chat/ask` instanciam um `CallbackHandler()` do [Langfuse](https://langfuse.com/docs) especificamente e dinamicamente para aquela requisição, rotulando com Tags o nome da coleção acessada.
+Cada chamada da rota `/chat/ask` instancia um `CallbackHandler()` do [Langfuse](https://langfuse.com/docs) para aquela requisição, enviando ao dashboard o trace completo (entradas, saídas, chamadas de ferramenta e tempos de inferência). As credenciais e a região são lidas do `.env` (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`). O `collection_name` é injetado na configuração de runtime do [LangGraph](https://langchain-ai.github.io/langgraph/) — e não como tag do Langfuse.
 
 
 ## 🚀 Como Executar Localmente
@@ -85,23 +87,20 @@ As chamadas da Rota `/chat/ask` instanciam um `CallbackHandler()` do [Langfuse](
 
 ### Passos:
 
-1.  **Subir o Qdrant pelo Docker:**
-    ```bash
-    docker compose up -d
-    ```
-
-2.  **Instalar dependências (UV):**
+1.  **Instalar dependências (UV):**
     ```bash
     uv sync
     ```
 
-3.  **Rodar a aplicação [FastAPI](https://fastapi.tiangolo.com/):**
+2.  **Subir Qdrant + API de uma vez (atalho recomendado):**
     ```bash
-    uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    make dev
     ```
+    O `make dev` garante o Docker/Qdrant no ar e sobe a API em `http://localhost:8000` (com auto-reload). Veja `make help` para os demais atalhos (`make down`, `make logs`).
 
-4.  **Testar via UI Própria!**
-    *   Vá no explorador de arquivos, ache o `index.html` deixado na raiz da pasta `09-rag-production`.
-    *   Dê um duplo-clique para abrir no Google Chrome / Edge.
-    *   No painel esquerdo: Crie uma coleção "base_estudo" e envie seus PDFs ou TXTs.
-    *   No painel direito: Troque o campo "Coleção" para "base_estudo" e interaja com o agente em tempo real!
+    > Preferindo o modo manual: `docker compose up -d` (Qdrant) e depois `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` (API).
+
+3.  **Testar via UI Própria!**
+    *   Abra o `index.html` (duplo-clique) no navegador (Chrome/Edge).
+    *   No painel esquerdo: crie uma **base de conhecimento** (ex.: `base_estudo`) e envie seus PDFs ou TXTs.
+    *   No painel direito: selecione a base no menu **"Buscar na base"** e converse com o agente em tempo real!

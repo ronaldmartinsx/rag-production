@@ -1,7 +1,7 @@
 [project]
 name = "09-rag-production"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agentic RAG em producao com Qdrant, LangGraph e FastAPI"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
