@@ -24,3 +24,6 @@ qdrant_storage/
 .vscode/
 .idea/
 .DS_Store
+
+# Config local do Claude Code
+.claude/
